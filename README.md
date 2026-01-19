@@ -45,7 +45,26 @@ pip install -r requirements.txt
 
 ## Quick Start
 
-Run a backtest with default settings (EURUSD, 90 days, 1h timeframe):
+### Web Interface (Recommended)
+
+Run the web application for an interactive frontend:
+
+```bash
+python app.py
+```
+
+Then open your browser to `http://localhost:5000` (or the Replit URL if using Replit).
+
+**Features:**
+- Interactive form to configure backtest parameters
+- Real-time results with color-coded metrics
+- Trade history table
+- Download CSV/JSON results
+- Mobile-responsive design
+
+### Command Line Interface
+
+Run a backtest from the command line:
 
 ```bash
 python main.py
