@@ -1,0 +1,22 @@
+# Data & Analysis
+pandas>=2.0.0
+numpy>=1.24.0
+yfinance>=0.2.36
+
+# Visualization
+matplotlib>=3.7.0
+plotly>=5.18.0
+
+# Telegram Integration
+python-telegram-bot>=20.0
+
+# Web Framework
+flask>=3.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pytz>=2024.1
+
+# Testing
+pytest>=7.4.0
+pytest-cov>=4.1.0
