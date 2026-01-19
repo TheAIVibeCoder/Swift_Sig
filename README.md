@@ -1,16 +1,16 @@
-# SwiftSig - Trading Strategy Backtesting & Signal Platform
+# SwiftSig - Trading Strategy Backtesting Platform
 
-A modular, maintainable trading analysis platform with backtesting capabilities, real-time data integration, and signal distribution via Telegram.
+A professional backtesting engine for trading strategies with realistic trade simulation and comprehensive performance metrics.
 
 ## Features
 
+- **Realistic Trade Simulation**: Checks high/low prices for accurate TP/SL execution
+- **Comprehensive Metrics**: Win rate, profit factor, Sharpe ratio, max drawdown, and more
 - **Modular Strategy Framework**: Easy to add new strategies without touching existing code
 - **Multiple Asset Classes**: Support for forex, crypto, and stocks via yfinance
-- **Backtesting Engine**: Test strategies on historical data with comprehensive metrics
-- **Real-time Signals**: Telegram bot integration for instant trade alerts
+- **Export Results**: Save trades and metrics to CSV/JSON formats
 - **Multiple Timeframes**: 1m, 5m, 15m, 1h, 4h, 1d support
-- **Data Caching**: Avoid rate limits with local data storage
-- **TradingView Charts**: Visualize strategies with interactive charts
+- **Trade-by-Trade Analysis**: Track every entry, exit, and outcome
 
 ## Project Structure
 
@@ -18,13 +18,10 @@ A modular, maintainable trading analysis platform with backtesting capabilities,
 SwiftSig/
 ├── strategies/          # Individual strategy implementations
 │   ├── base_strategy.py # Abstract base class
-│   └── ma_crossover.py  # Example MA crossover strategy
-├── data/               # Cached historical data (gitignored)
-├── backtests/          # Saved backtest results (gitignored)
-├── configs/            # Strategy configurations
-├── utils/              # Helper functions
-│   └── data_loader.py  # Data fetching and caching
-├── templates/          # HTML/chart templates
+│   └── ma_crossover.py  # MA crossover strategy with ATR
+├── backtest.py         # Backtesting engine
+├── data_fetcher.py     # Historical data fetching (yfinance)
+├── backtests/          # Exported results (auto-created)
 ├── main.py            # Entry point
 ├── requirements.txt   # Python dependencies
 └── README.md          # This file
@@ -32,148 +29,181 @@ SwiftSig/
 
 ## Installation
 
-### Local Setup
+1. Install Python 3.8 or higher
 
-1. Clone the repository:
-```bash
-git clone <repository-url>
-cd SwiftSig
-```
-
-2. Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
+2. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-4. Create a `.env` file for secrets:
+3. (Optional) Create a virtual environment:
 ```bash
-TELEGRAM_BOT_TOKEN=your_bot_token_here
-TELEGRAM_CHAT_IDS=123456789,987654321
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
-
-### Replit Setup
-
-1. Import this repository to Replit
-2. Replit will auto-detect dependencies from `requirements.txt`
-3. Add secrets in Replit's Secrets tab:
-   - `TELEGRAM_BOT_TOKEN`
-   - `TELEGRAM_CHAT_IDS`
-4. Run the application
 
 ## Quick Start
 
-### Test Data Loading
+Run a backtest with default settings (EURUSD, 90 days, 1h timeframe):
 
-```python
-from utils import DataLoader, get_forex_pair
-
-loader = DataLoader()
-eurusd = get_forex_pair("EUR", "USD")
-df = loader.fetch_data(eurusd, timeframe="1h", days_back=7)
-print(df.head())
+```bash
+python main.py
 ```
 
-### Run a Strategy
+### Command Line Examples
 
-```python
-from strategies import MACrossoverStrategy
-from utils import DataLoader, get_forex_pair
+```bash
+# Forex pair
+python main.py EURUSD --days 30 --timeframe 1h
 
-# Load data
-loader = DataLoader()
-eurusd = get_forex_pair("EUR", "USD")
-df = loader.fetch_data(eurusd, timeframe="1h", days_back=30)
+# Crypto
+python main.py BTC-USD --days 60 --timeframe 4h
 
-# Create and run strategy
-strategy = MACrossoverStrategy(params={
-    "fast_period": 20,
-    "slow_period": 50
-})
+# Stock
+python main.py AAPL --days 365 --timeframe 1d
 
-signals = strategy.generate_signals(df, eurusd)
-print(f"Generated {len(signals)} signals")
+# With date range
+python main.py GBPUSD --start 2024-01-01 --end 2024-12-31
+
+# Use CLI interface
+python main.py --help
 ```
 
-## Creating a New Strategy
+### Command Line Arguments
 
-1. Create a new file in `strategies/` directory
-2. Inherit from `BaseStrategy`
-3. Implement required methods:
-   - `generate_signals()`: Analyze data and produce signals
-   - `calculate_tp_sl()`: Determine TP/SL levels
+- `pair`: Trading pair (EURUSD, BTC-USD, AAPL, etc.)
+- `--strategy`: Strategy to use (default: ma_crossover)
+- `--timeframe`: Candlestick interval - 1m, 5m, 15m, 1h, 4h, 1d (default: 1h)
+- `--days`: Days of historical data (default: 30)
+- `--start`: Start date in YYYY-MM-DD format
+- `--end`: End date in YYYY-MM-DD format
+- `--no-export`: Don't export results to files
 
-Example:
+### Programmatic Usage
+
+```python
+from data_fetcher import DataFetcher
+from strategies.ma_crossover import MACrossoverStrategy
+from backtest import BacktestEngine
+from datetime import datetime, timedelta
+
+# Fetch data
+fetcher = DataFetcher()
+end_date = datetime.now()
+start_date = end_date - timedelta(days=90)
+
+df = fetcher.fetch_ohlcv(
+    pair="EURUSD=X",
+    interval="1h",
+    start_date=start_date,
+    end_date=end_date
+)
+
+# Create strategy
+strategy = MACrossoverStrategy(fast_period=50, slow_period=200)
+
+# Run backtest
+engine = BacktestEngine(strategy=strategy, initial_capital=10000.0)
+results = engine.run(df=df, pair="EURUSD=X", pip_value=0.0001, lot_size=1.0)
+
+# Print and export
+engine.print_summary(results)
+engine.export_results(results, format="both")
+```
+
+## Creating Custom Strategies
+
+Extend `BaseStrategy` to create your own strategies:
 
 ```python
 from strategies.base_strategy import BaseStrategy, Signal
-from typing import List, Tuple
 import pandas as pd
+from typing import List
 
 class MyStrategy(BaseStrategy):
-    def __init__(self, params: dict = None):
-        super().__init__(name="My_Strategy", params=params or {})
+    def __init__(self, param1: int, param2: float):
+        super().__init__(name="my_strategy")
+        self.param1 = param1
+        self.param2 = param2
 
     def generate_signals(self, df: pd.DataFrame, pair: str) -> List[Signal]:
-        # Your logic here
         signals = []
-        # ... analyze data and create signals
+
+        # Calculate your indicators
+        # Identify entry points
+        # Create Signal objects with entry, TP, SL prices
+
+        for i in range(100, len(df)):  # Start after warmup period
+            if your_entry_condition:
+                signal = Signal(
+                    pair=pair,
+                    entry_time=df.index[i],
+                    direction="LONG",  # or "SHORT"
+                    strategy_name=self.name,
+                    entry_price=df.iloc[i]["Close"],
+                    tp_price=df.iloc[i]["Close"] * 1.03,  # 3% profit
+                    sl_price=df.iloc[i]["Close"] * 0.98   # 2% stop
+                )
+                signals.append(signal)
+
         return signals
-
-    def calculate_tp_sl(self, df, entry_price, direction, entry_index) -> Tuple[float, float]:
-        # Your TP/SL logic here
-        tp = entry_price * 1.02  # Example: 2% profit
-        sl = entry_price * 0.99  # Example: 1% loss
-        return tp, sl
 ```
 
-## Supported Assets
+## Strategies
 
-### Forex
-```python
-from utils import get_forex_pair
-eurusd = get_forex_pair("EUR", "USD")  # Returns "EURUSD=X"
-gbpjpy = get_forex_pair("GBP", "JPY")  # Returns "GBPJPY=X"
+### MA Crossover Strategy
+
+Classic moving average crossover strategy with ATR-based risk management.
+
+**Parameters:**
+- `fast_period`: Fast MA period (default: 50)
+- `slow_period`: Slow MA period (default: 200)
+
+**Signals:**
+- **LONG**: Fast MA crosses above Slow MA
+- **SHORT**: Fast MA crosses below Slow MA
+
+**Risk Management:**
+- Stop Loss: 2x ATR
+- Take Profit: 3x ATR
+
+## Performance Metrics
+
+The backtesting engine calculates:
+
+- **Total Trades**: Number of trades executed
+- **Win Rate**: Percentage of winning trades
+- **Total Wins/Losses**: Count of winning and losing trades
+- **Total Pips**: Net profit/loss in pips
+- **Avg Winning/Losing Pips**: Average pips per win/loss
+- **Profit Factor**: Gross profit / Gross loss
+- **Max Drawdown**: Largest peak-to-trough decline in pips
+- **Sharpe Ratio**: Risk-adjusted return metric
+
+## Output Files
+
+Results are automatically exported to the `backtests/` directory:
+
+- `{PAIR}_{STRATEGY}_{TIMESTAMP}_trades.csv`: Individual trade details
+- `{PAIR}_{STRATEGY}_{TIMESTAMP}_results.json`: Full results with metrics
+
+Example:
 ```
-
-### Crypto
-```python
-from utils import get_crypto_pair
-btc = get_crypto_pair("BTC", "USD")    # Returns "BTC-USD"
-eth = get_crypto_pair("ETH", "USD")    # Returns "ETH-USD"
-```
-
-### Stocks
-```python
-# Use ticker symbol directly
-df = loader.fetch_data("AAPL", timeframe="1d", days_back=365)
-```
-
-## Testing
-
-Run the included examples:
-
-```bash
-# Test data loader
-python utils/data_loader.py
-
-# Test MA crossover strategy
-python strategies/ma_crossover.py
+backtests/
+├── EURUSD_ma_crossover_20260119_143052_trades.csv
+└── EURUSD_ma_crossover_20260119_143052_results.json
 ```
 
 ## Roadmap
 
-- [ ] Backtesting engine implementation
+- [x] Backtesting engine implementation
+- [x] Performance metrics and reporting
+- [x] MA Crossover strategy
+- [ ] More strategy examples (RSI, Bollinger Bands, etc.)
 - [ ] TradingView chart integration
 - [ ] Telegram bot for signals
-- [ ] Web dashboard (Flask)
-- [ ] More strategy examples (RSI, Bollinger Bands, etc.)
-- [ ] Performance metrics and reporting
+- [ ] Web dashboard
 - [ ] Unit tests
 
 ## Contributing
