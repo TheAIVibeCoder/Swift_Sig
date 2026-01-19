@@ -1,13 +1,18 @@
 # SwiftSig - Trading Strategy Backtesting Platform
 
-A professional backtesting engine for trading strategies with realistic trade simulation and comprehensive performance metrics.
+A professional, **local-first** backtesting engine for testing trading strategies with realistic trade simulation and comprehensive performance metrics.
+
+## Philosophy: Local Development First
+
+This project is designed to run **100% locally on your machine**. No cloud deployment, no complex CI/CD, no remote dependencies. Build and test strategies locally, then optionally deploy when ready.
 
 ## Features
 
 - **Realistic Trade Simulation**: Checks high/low prices for accurate TP/SL execution
 - **Comprehensive Metrics**: Win rate, profit factor, Sharpe ratio, max drawdown, and more
+- **Beautiful Web Interface**: Modern, responsive UI for running backtests
 - **Modular Strategy Framework**: Easy to add new strategies without touching existing code
-- **Multiple Asset Classes**: Support for forex, crypto, and stocks via yfinance
+- **Multiple Asset Classes**: Forex, crypto, and stocks via yfinance
 - **Export Results**: Save trades and metrics to CSV/JSON formats
 - **Multiple Timeframes**: 1m, 5m, 15m, 1h, 4h, 1d support
 - **Trade-by-Trade Analysis**: Track every entry, exit, and outcome
@@ -16,90 +21,88 @@ A professional backtesting engine for trading strategies with realistic trade si
 
 ```
 SwiftSig/
-├── strategies/          # Individual strategy implementations
-│   ├── base_strategy.py # Abstract base class
-│   └── ma_crossover.py  # MA crossover strategy with ATR
+├── app.py              # Flask web application
 ├── backtest.py         # Backtesting engine
 ├── data_fetcher.py     # Historical data fetching (yfinance)
+├── main.py             # CLI entry point
+├── strategies/         # Strategy implementations
+│   ├── base_strategy.py
+│   └── ma_crossover.py
+├── templates/          # HTML templates
+│   └── index.html
 ├── backtests/          # Exported results (auto-created)
-├── main.py            # Entry point
-├── requirements.txt   # Python dependencies
-└── README.md          # This file
+└── requirements.txt    # Python dependencies
 ```
 
-## Installation
+## Quick Start (5 Minutes)
 
-1. Install Python 3.8 or higher
+### 1. Install Python
 
-2. Install dependencies:
+Download Python 3.8+ from [python.org](https://www.python.org/downloads/)
+
+### 2. Install Dependencies
+
+Open Command Prompt or PowerShell in the project folder:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-3. (Optional) Create a virtual environment:
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-## Quick Start
-
-### Web Interface (Recommended)
-
-Run the web application for an interactive frontend:
+### 3. Run the Web App
 
 ```bash
 python app.py
 ```
 
-Then open your browser to `http://localhost:5000` (or the Replit URL if using Replit).
+### 4. Open Your Browser
 
-**Features:**
-- Interactive form to configure backtest parameters
-- Real-time results with color-coded metrics
-- Trade history table
-- Download CSV/JSON results
-- Mobile-responsive design
+Navigate to `http://localhost:5000`
+
+That's it! You're ready to backtest strategies.
+
+## Usage
+
+### Web Interface (Recommended)
+
+The web interface provides an intuitive way to run backtests:
+
+1. **Start the app**: `python app.py`
+2. **Open browser**: `http://localhost:5000`
+3. **Configure backtest**:
+   - Enter trading pair (EURUSD, BTC-USD, AAPL, etc.)
+   - Select timeframe (1h, 4h, 1d, etc.)
+   - Set date range or days back
+   - Adjust MA periods
+4. **Run backtest**: Click "Run Backtest"
+5. **View results**: See metrics, trade history, download CSV/JSON
 
 ### Command Line Interface
 
-Run a backtest from the command line:
+For automated testing or scripting:
 
 ```bash
+# Basic usage
 python main.py
-```
 
-### Command Line Examples
-
-```bash
-# Forex pair
-python main.py EURUSD --days 30 --timeframe 1h
+# Custom pair and timeframe
+python main.py EURUSD --days 90 --timeframe 1h
 
 # Crypto
 python main.py BTC-USD --days 60 --timeframe 4h
 
-# Stock
+# Stocks
 python main.py AAPL --days 365 --timeframe 1d
 
-# With date range
+# Date range
 python main.py GBPUSD --start 2024-01-01 --end 2024-12-31
 
-# Use CLI interface
+# See all options
 python main.py --help
 ```
 
-### Command Line Arguments
-
-- `pair`: Trading pair (EURUSD, BTC-USD, AAPL, etc.)
-- `--strategy`: Strategy to use (default: ma_crossover)
-- `--timeframe`: Candlestick interval - 1m, 5m, 15m, 1h, 4h, 1d (default: 1h)
-- `--days`: Days of historical data (default: 30)
-- `--start`: Start date in YYYY-MM-DD format
-- `--end`: End date in YYYY-MM-DD format
-- `--no-export`: Don't export results to files
-
 ### Programmatic Usage
+
+For integrating into your own scripts:
 
 ```python
 from data_fetcher import DataFetcher
@@ -109,134 +112,184 @@ from datetime import datetime, timedelta
 
 # Fetch data
 fetcher = DataFetcher()
-end_date = datetime.now()
-start_date = end_date - timedelta(days=90)
-
 df = fetcher.fetch_ohlcv(
     pair="EURUSD=X",
     interval="1h",
-    start_date=start_date,
-    end_date=end_date
+    start_date=datetime.now() - timedelta(days=90),
+    end_date=datetime.now()
 )
 
-# Create strategy
+# Create strategy and run backtest
 strategy = MACrossoverStrategy(fast_period=50, slow_period=200)
-
-# Run backtest
 engine = BacktestEngine(strategy=strategy, initial_capital=10000.0)
-results = engine.run(df=df, pair="EURUSD=X", pip_value=0.0001, lot_size=1.0)
+results = engine.run(df=df, pair="EURUSD=X", pip_value=0.0001)
 
-# Print and export
+# Print results
 engine.print_summary(results)
 engine.export_results(results, format="both")
 ```
 
+## Current Strategy: MA Crossover with ATR
+
+The implemented strategy uses moving average crossovers with ATR-based risk management:
+
+**How It Works:**
+- **Fast MA (50)** crosses above **Slow MA (200)** → LONG signal
+- **Fast MA (50)** crosses below **Slow MA (200)** → SHORT signal
+- **Stop Loss**: 2× ATR from entry
+- **Take Profit**: 3× ATR from entry
+- **Risk/Reward Ratio**: 1:1.5
+
+**Why This Strategy:**
+- Classic trend-following approach
+- ATR adapts to market volatility
+- Works across multiple asset classes
+- Simple to understand and modify
+
 ## Creating Custom Strategies
 
-Extend `BaseStrategy` to create your own strategies:
+Add your own strategies by extending `BaseStrategy`:
 
 ```python
 from strategies.base_strategy import BaseStrategy, Signal
 import pandas as pd
-from typing import List
 
 class MyStrategy(BaseStrategy):
-    def __init__(self, param1: int, param2: float):
+    def __init__(self, param1: int = 20):
         super().__init__(name="my_strategy")
         self.param1 = param1
-        self.param2 = param2
 
-    def generate_signals(self, df: pd.DataFrame, pair: str) -> List[Signal]:
+    def generate_signals(self, df: pd.DataFrame, pair: str):
         signals = []
 
-        # Calculate your indicators
-        # Identify entry points
-        # Create Signal objects with entry, TP, SL prices
+        # Your indicator calculations
+        # ...
 
-        for i in range(100, len(df)):  # Start after warmup period
-            if your_entry_condition:
+        # Generate signals
+        for i in range(100, len(df)):
+            if your_long_condition:
                 signal = Signal(
                     pair=pair,
                     entry_time=df.index[i],
-                    direction="LONG",  # or "SHORT"
+                    direction="LONG",
                     strategy_name=self.name,
                     entry_price=df.iloc[i]["Close"],
-                    tp_price=df.iloc[i]["Close"] * 1.03,  # 3% profit
-                    sl_price=df.iloc[i]["Close"] * 0.98   # 2% stop
+                    tp_price=df.iloc[i]["Close"] * 1.02,
+                    sl_price=df.iloc[i]["Close"] * 0.99
                 )
                 signals.append(signal)
 
         return signals
 ```
 
-## Strategies
-
-### MA Crossover Strategy
-
-Classic moving average crossover strategy with ATR-based risk management.
-
-**Parameters:**
-- `fast_period`: Fast MA period (default: 50)
-- `slow_period`: Slow MA period (default: 200)
-
-**Signals:**
-- **LONG**: Fast MA crosses above Slow MA
-- **SHORT**: Fast MA crosses below Slow MA
-
-**Risk Management:**
-- Stop Loss: 2x ATR
-- Take Profit: 3x ATR
+Save to `strategies/my_strategy.py`, then update `main.py` and `app.py` to include it.
 
 ## Performance Metrics
 
 The backtesting engine calculates:
 
-- **Total Trades**: Number of trades executed
-- **Win Rate**: Percentage of winning trades
-- **Total Wins/Losses**: Count of winning and losing trades
-- **Total Pips**: Net profit/loss in pips
-- **Avg Winning/Losing Pips**: Average pips per win/loss
-- **Profit Factor**: Gross profit / Gross loss
-- **Max Drawdown**: Largest peak-to-trough decline in pips
-- **Sharpe Ratio**: Risk-adjusted return metric
+| Metric | Description |
+|--------|-------------|
+| **Total Trades** | Number of trades executed |
+| **Win Rate** | Percentage of winning trades |
+| **Total Pips** | Net profit/loss in pips |
+| **Profit Factor** | Gross profit ÷ Gross loss |
+| **Avg Win/Loss** | Average pips per winning/losing trade |
+| **Max Drawdown** | Largest peak-to-trough decline |
+| **Sharpe Ratio** | Risk-adjusted return metric |
 
 ## Output Files
 
-Results are automatically exported to the `backtests/` directory:
+Results are automatically saved to `backtests/`:
 
-- `{PAIR}_{STRATEGY}_{TIMESTAMP}_trades.csv`: Individual trade details
-- `{PAIR}_{STRATEGY}_{TIMESTAMP}_results.json`: Full results with metrics
+- `{PAIR}_{STRATEGY}_{TIMESTAMP}_trades.csv` - Trade-by-trade details
+- `{PAIR}_{STRATEGY}_{TIMESTAMP}_results.json` - Full results with metrics
 
-Example:
+## TradingView Integration (Coming Soon)
+
+Two ways to integrate with TradingView:
+
+### Option 1: Pine Script (Immediate)
+Convert the strategy to Pine Script and backtest directly on TradingView charts.
+
+### Option 2: Webhook Integration (Future)
+- TradingView sends alerts via webhook
+- Flask app receives signals
+- Telegram bot notifies you instantly
+- Requires TradingView Premium
+
+## Development Workflow
+
 ```
-backtests/
-├── EURUSD_ma_crossover_20260119_143052_trades.csv
-└── EURUSD_ma_crossover_20260119_143052_results.json
+1. Write/modify strategy in strategies/
+2. Test locally using web interface (python app.py)
+3. Review results and iterate
+4. Export successful strategies
+5. (Optional) Deploy to VPS when ready for live monitoring
 ```
+
+## Local Development & Deployment
+
+**Current Phase: Local Development**
+- Run everything locally with `python app.py`
+- Web dashboard at `http://localhost:5000`
+- Use Git for version control (optional)
+- Test strategies thoroughly before considering deployment
+
+**Future: Deployment Options**
+When you're ready to deploy (not required):
+- **Option 1**: Render (free tier)
+- **Option 2**: Railway (free tier)
+- **Option 3**: DigitalOcean VPS ($4/month)
+- **Option 4**: Keep running locally (recommended for now)
 
 ## Roadmap
 
-- [x] Backtesting engine implementation
+**Completed:**
+- [x] Backtesting engine with realistic execution
+- [x] Web interface with real-time results
+- [x] MA Crossover strategy with ATR
 - [x] Performance metrics and reporting
-- [x] MA Crossover strategy
-- [ ] More strategy examples (RSI, Bollinger Bands, etc.)
-- [ ] TradingView chart integration
-- [ ] Telegram bot for signals
-- [ ] Web dashboard
-- [ ] Unit tests
+- [x] CSV/JSON export
+
+**Next Steps:**
+- [ ] More strategies (RSI, Bollinger Bands, MACD)
+- [ ] Parameter optimization
+- [ ] TradingView webhook integration
+- [ ] Telegram notifications
+- [ ] Position sizing calculator
+- [ ] Walk-forward analysis
+
+## Troubleshooting
+
+**"Module not found" errors:**
+```bash
+pip install -r requirements.txt
+```
+
+**Port already in use:**
+The app runs on port 5000. Change it in `app.py` if needed:
+```python
+port = int(os.environ.get('PORT', 8080))  # Change to 8080
+```
+
+**No data fetched:**
+- Check your internet connection
+- Verify the trading pair format (EURUSD=X for forex, BTC-USD for crypto)
+- Try a different timeframe
 
 ## Contributing
 
-This project follows clean code principles:
+Clean code principles:
 - Minimal, surgical edits only
 - No code duplication
-- Type hints and docstrings required
+- Type hints and docstrings
 - Meaningful commit messages
 
 ## License
 
-MIT License - feel free to use and modify.
+MIT License - free to use and modify.
 
 ## Disclaimer
 
-This software is for educational purposes only. Use at your own risk. Past performance does not guarantee future results. Always do your own research before trading.
+**Educational purposes only.** This software is for learning and strategy development. Use at your own risk. Past performance does not guarantee future results. Always do your own research before trading with real money.
